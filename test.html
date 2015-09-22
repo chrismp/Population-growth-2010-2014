@@ -1,8 +1,127 @@
 <html>
 <head>
 	<title></title>
+	<style type="text/css">
+		.pop2010 {
+			fill: #9ecae1;
+		}
+
+		.pop2014 {
+			fill: #3182bd;
+		}
+
+		.chart text {
+			fill: #eee;
+			font: 12px sans-serif;
+			font-weight: bold;
+			text-anchor: end;
+		}
+	</style>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
 </head>
 <body>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+	<!-- <h1>How population changed in America's biggest cities from 2010 to 2014</h1> -->
+	<svg class="chart"></svg>
+	<script type="text/javascript">
+		function numberWithCommas(x) {
+		    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+		}
+
+		var width = window.innerWidth*0.90;
+		var barHeight = 30;
+		var spacing = 2.5;
+
+
+		var chart = d3.select('.chart')
+			.attr('width',width);
+
+		d3.csv('dataset.csv', function(error,csvData){
+			var filterData = csvData.filter(function(d){
+				return +d.population2014>=500000;
+			});
+
+			var data = filterData.map(function(obj){
+				var pop2010 = +obj.population2010;
+				var pop2014 = +obj.population2014;
+				var popChange = pop2014-pop2010;
+				var popChangePercent = popChange/pop2010;
+
+				obj.popChange = popChange;
+				obj.popChangePercent = popChangePercent;
+				return obj;
+			});
+
+			var maxPopulation2014 = d3.max(
+					data,
+					function(d){
+						return +d.population2014;
+					}
+				);
+
+			var xScale = d3.scale.log()
+				.domain(
+					[
+						400000,
+						maxPopulation2014
+					]
+				)
+				.range([0,width]);
+
+			data.sort(
+				function(a,b){
+					return +b.population2014 - +a.population2014; // Sort by 2014 population, highest to lowest
+					// return +b.popChangePercent - +a.popChangePercent;
+				}
+			);
+
+			chart.attr( 'height', data.length*(barHeight*spacing) );
+			var bar = chart.selectAll('g')
+				.data(data)
+				.enter()
+					.append('g')
+					.attr('transform',function(d,i){
+						return 'translate(0,'+i*barHeight*spacing+')';
+					});
+
+			// 2010 population bar
+			bar.append('rect')
+				.attr('class','pop2010')
+				.attr('width',function(d){
+					return xScale(+d.population2010);
+				})
+				.attr('height',barHeight);
+
+			// 2010 pop bar label
+			bar.append('text')
+				.attr('x',function(d){ 
+					return xScale(+d.population2010)-3;
+				})
+				.attr('y',barHeight/2)
+				.attr('dy','0.35em')
+				.text(function(d){
+					return numberWithCommas(d.population2010);
+				});
+
+			// 2014 pop bar
+			bar.append('rect')
+				.attr('class','pop2014')
+				.attr('y',barHeight)
+				.attr('width',function(d){ 
+					return xScale(+d.population2014);
+				})
+				.attr('height',barHeight);
+
+			// 2014 pop bar label
+			bar.append('text')
+				.attr('x',function(d){ 
+					return xScale(+d.population2014)-3;
+				})
+				.attr('y',barHeight*1.5)
+				.attr('dy','0.35em')
+				.text(function(d){
+					return numberWithCommas(d.population2014);
+				});
+		});
+	</script>
 </body>
 </html>
