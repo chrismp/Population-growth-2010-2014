@@ -10,17 +10,28 @@
 			fill: #3182bd;
 		}
 
-		.chart text {
+		.bar text {
 			fill: #eee;
 			font: 12px sans-serif;
 			font-weight: bold;
 			text-anchor: end;
 		}
+
+		.axis {
+			font: 10px sans-serif;
+		}
+
+		/*.axis path,*/  /* Removing this line renders X axis line invisible*/
+		.axis line {
+			fill: none;
+			stroke: #000;
+			shape-rendering: crispEdges;
+		}
 	</style>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
 </head>
 <body>
-	<!-- <h1>How population changed in America's biggest cities from 2010 to 2014</h1> -->
+	<h1>Here's how fast America's hugest cities grew or shrank from 2010 to 2014</h1>
 	<svg class="chart"></svg>
 	<script type="text/javascript">
 		function numberWithCommas(x) {
@@ -30,8 +41,7 @@
 		var width = window.innerWidth*0.90;
 		var barHeight = 30;
 		var spacing = 2.5;
-
-
+		var barWithSpacing = barHeight*spacing;
 		var chart = d3.select('.chart')
 			.attr('width',width);
 
@@ -74,13 +84,15 @@
 				}
 			);
 
-			chart.attr( 'height', data.length*(barHeight*spacing) );
+			chart.attr( 'height', data.length*(barWithSpacing) );
+
 			var bar = chart.selectAll('g')
 				.data(data)
 				.enter()
 					.append('g')
+					.attr('class','bar')
 					.attr('transform',function(d,i){
-						return 'translate(0,'+i*barHeight*spacing+')';
+						return 'translate(0,'+(i*barWithSpacing+20)+')';
 					});
 
 			// 2010 population bar
@@ -120,6 +132,40 @@
 				.attr('dy','0.35em')
 				.text(function(d){
 					return numberWithCommas(d.population2014);
+				});
+
+
+			var xTicks = [
+				500000,
+				1000000,
+				2000000,
+				5000000
+			];
+			var xAxis = d3.svg.axis()
+				.scale(xScale)
+				.tickValues(xTicks)
+				.tickFormat(d3.format('s'))
+				.orient('top');
+
+			chart.append('g')
+				.attr('class','x axis')
+				.call(xAxis);
+
+			// d3.selectAll('.tick text')
+			// .attr('y',function(d,i){
+			// 	return +(this.getAttribute('y')) + 20;
+			// });
+
+			d3.selectAll('.axis g')
+				.attr('transform',function(d,i){
+					var translateString = this.getAttribute('transform');
+
+					// Get the string 'translate(X,Y)' and get the X, but give a new Y
+					var translateArray = translateString.match(/\(.*(?=\))/)[0]
+						.replace('(','')
+						.split(',');
+					var yDiff = +translateArray[1] + 20; 
+					return 'translate('+translateArray[0]+','+yDiff+')';
 				});
 		});
 	</script>
