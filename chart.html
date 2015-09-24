@@ -1,81 +1,103 @@
+<!DOCTYPE HTML>
 <html>
 <head>
 	<title></title>
 	<style type="text/css">
-		.pop2010 {
-			fill: #9ecae1;
-		}
-
-		.pop2014 {
-			fill: #3182bd;
-		}
-
-		.bar text {
-			fill: #eee;
-			font: 12px sans-serif;
-			font-weight: bold;
-			text-anchor: end;
-		}
-
 		.axis {
 			font: 10px sans-serif;
 		}
 
-		/*.axis path,*/  /* Removing this line renders X axis line invisible*/
-		.axis line {
+		.x line,
+		.y .domain {
 			fill: none;
 			stroke: #000;
 			shape-rendering: crispEdges;
 		}
+
+		.x line {
+			opacity: 0.2;
+		}
+
+		.x .domain {
+			display: none;
+		}
+
+		.axis text {
+			font: 14px sans-serif;
+		}
+
+		.city text {
+			font: 16px sans-serif;
+			font-weight: bold;
+		}
 	</style>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.js" charset="utf-8"></script>
 </head>
 <body>
-	<h1>Here's how fast America's hugest cities grew or shrank from 2010 to 2014</h1>
+	<!-- <h1>Here's how fast America's hugest cities grew or shrank from 2010 to 2014</h1> -->
 	<svg class="chart"></svg>
 	<script type="text/javascript">
 		function numberWithCommas(x) {
 		    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 		}
 
-		var width = window.innerWidth*0.90;
-		var barHeight = 30;
-		var spacing = 2.5;
-		var barWithSpacing = barHeight*spacing;
+		var colorArray = [
+			'#9ecae1',
+			'#3182bd'
+		];
+		var color = d3.scale.ordinal()
+			.range(colorArray);
+
+		var margin = {
+			top: 50,
+			right: 10,
+			bottom: 100,
+			left: 150
+		};
+		var marginTop = margin.top;
+		var marginLeft = margin.left;
+		var marginBottom = margin.bottom;
+		var marginRight = margin.right;
+		var width = window.innerWidth - marginLeft - marginRight;
+		var widthWithMargins = width+marginRight+marginLeft;
+		var height = 2000;
 		var chart = d3.select('.chart')
-			.attr('width',width);
+			.attr('width',widthWithMargins);
 
 		d3.csv('dataset.csv', function(error,csvData){
-			var filterData = csvData.filter(function(d){
+			var data = csvData.filter(function(d){
 				return +d.population2014>=500000;
 			});
 
-			var data = filterData.map(function(obj){
-				var pop2010 = +obj.population2010;
-				var pop2014 = +obj.population2014;
-				var popChange = pop2014-pop2010;
-				var popChangePercent = popChange/pop2010;
+			// var data = data.map(function(obj){
+			// 	var pop2010 = +obj.population2010;
+			// 	var pop2014 = +obj.population2014;
+			// 	var popChange = pop2014-pop2010;
+			// 	var popChangePercent = popChange/pop2010;
 
-				obj.popChange = popChange;
-				obj.popChangePercent = popChangePercent;
-				return obj;
-			});
-
+			// 	obj.popChange = popChange;
+			// 	obj.popChangePercent = popChangePercent;
+			// 	return obj;
+			// });
 			var maxPopulation2014 = d3.max(
 					data,
 					function(d){
 						return +d.population2014;
 					}
 				);
-
-			var xScale = d3.scale.log()
-				.domain(
-					[
-						400000,
-						maxPopulation2014
-					]
-				)
-				.range([0,width]);
+			var dataCount = data.length;
+			
+			var yearColumnNames = d3.keys(data[0]).filter(function(key){ 
+				return (key!=="Id" && key!=="City");
+			});
+			data.forEach(function(d){
+				d.years = yearColumnNames.map(function(name){
+					return {
+						name: name,
+						value: +d[name]
+					};
+				})
+			});
 
 			data.sort(
 				function(a,b){
@@ -83,90 +105,119 @@
 					// return +b.popChangePercent - +a.popChangePercent;
 				}
 			);
+			
+			chart.attr('height',height)
+				.attr('transform','translate('+marginLeft+','+marginTop+')');
 
-			chart.attr( 'height', data.length*(barWithSpacing) );
-
-			var bar = chart.selectAll('g')
-				.data(data)
-				.enter()
-					.append('g')
-					.attr('class','bar')
-					.attr('transform',function(d,i){
-						return 'translate(0,'+(i*barWithSpacing+20)+')';
-					});
-
-			// 2010 population bar
-			bar.append('rect')
-				.attr('class','pop2010')
-				.attr('width',function(d){
-					return xScale(+d.population2010);
-				})
-				.attr('height',barHeight);
-
-			// 2010 pop bar label
-			bar.append('text')
-				.attr('x',function(d){ 
-					return xScale(+d.population2010)-3;
-				})
-				.attr('y',barHeight/2)
-				.attr('dy','0.35em')
-				.text(function(d){
-					return numberWithCommas(d.population2010);
-				});
-
-			// 2014 pop bar
-			bar.append('rect')
-				.attr('class','pop2014')
-				.attr('y',barHeight)
-				.attr('width',function(d){ 
-					return xScale(+d.population2014);
-				})
-				.attr('height',barHeight);
-
-			// 2014 pop bar label
-			bar.append('text')
-				.attr('x',function(d){ 
-					return xScale(+d.population2014)-3;
-				})
-				.attr('y',barHeight*1.5)
-				.attr('dy','0.35em')
-				.text(function(d){
-					return numberWithCommas(d.population2014);
-				});
-
+			// X axis stuff
+			var xDomainMin = 400000;
+			var x = d3.scale.log()
+				.domain([xDomainMin,maxPopulation2014])
+				.range([0,width]); // Make range smaller than chart width so x axis doesn't go off the edge of chart's SVG canvas
 
 			var xTicks = [
+				// xDomainMin,
 				500000,
 				1000000,
 				2000000,
-				5000000
+				4000000,
+				8000000
 			];
 			var xAxis = d3.svg.axis()
-				.scale(xScale)
+				.scale(x)
 				.tickValues(xTicks)
 				.tickFormat(d3.format('s'))
+				.innerTickSize(-height)
 				.orient('top');
 
 			chart.append('g')
 				.attr('class','x axis')
-				.call(xAxis);
+				.call(xAxis)
+				.append('text')
+					.text('Population')
+					.style('text-anchor','end')
+					.attr('class','axis-label')
+					.attr('x',widthWithMargins/2)
+					.attr('y',-25);
 
-			// d3.selectAll('.tick text')
-			// .attr('y',function(d,i){
-			// 	return +(this.getAttribute('y')) + 20;
-			// });
+			var cityNameArray = data.map(function(d){
+				return d.City;
+			});
+			var y0 = d3.scale.ordinal()
+				.domain(cityNameArray)
+				.rangeRoundBands([0,height-marginTop],0.15);
+			var y1 = d3.scale.ordinal()
+				.domain(yearColumnNames)
+				.rangeRoundBands([0,y0.rangeBand()]);
 
-			d3.selectAll('.axis g')
-				.attr('transform',function(d,i){
-					var translateString = this.getAttribute('transform');
+			var yAxis = d3.svg.axis()
+				.scale(y0)
 
-					// Get the string 'translate(X,Y)' and get the X, but give a new Y
-					var translateArray = translateString.match(/\(.*(?=\))/)[0]
-						.replace('(','')
-						.split(',');
-					var yDiff = +translateArray[1] + 20; 
-					return 'translate('+translateArray[0]+','+yDiff+')';
+				.orient('left');
+
+			chart.append('g')
+				.attr('class','y axis')
+				.call(yAxis);
+
+			var city = chart.selectAll('.city')
+				.data(data)
+				.enter()
+				.append('g')
+				.attr('class','city')
+				.attr('transform',function(d){
+					return 'translate('+0+','+y0(d.City)+')';
 				});
+
+			city.selectAll('rect')
+				.data(function(d){
+					return d.years;
+				})
+				.enter()
+				.append('rect')
+					.attr('height',function(d){
+						return y1.rangeBand();
+					})
+					.attr('width',function(d){
+						return x(d.value);
+					})
+					.attr('y',function(d){
+						return y1(d.name);
+					})
+					.style('fill',function(d){
+						return color(d.name);
+					})
+
+			var popThreshold = 2000000; // Proxy for bar width
+			city.selectAll('.city')
+				.data(function(d){
+					return d.years;
+				})
+				.enter()
+				.append('text')
+				.attr('x',function(d){
+					var population = d.value;
+					var xPop = x(population);
+					return population>=popThreshold ? xPop-3 : xPop+3;
+				})
+				.attr('y',function(d){
+					return y1(d.name)+(y1.rangeBand()/1.3);
+				})
+				.attr('text-anchor',function(d){
+					return d.value>=popThreshold ? 'end' : 'start';
+				})
+				.attr('fill',function(d){
+					return d.value>=popThreshold ? '#eee' : '#000';
+				})
+				.attr('stroke',function(d){
+					return d.value<popThreshold ? '#fff' : '';
+				})
+				.attr('stroke-width',function(d){
+					return d.value<popThreshold ? 5 : '';
+				})
+				.attr('paint-order','stroke')
+				.text(function(d){
+					return numberWithCommas(d.value);
+				})
 		});
 	</script>
 </body>
