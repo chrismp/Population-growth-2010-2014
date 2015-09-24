@@ -24,6 +24,7 @@
 
 		.axis text {
 			font: 14px sans-serif;
+			font-weight: bold;
 		}
 
 		.city text {
@@ -39,7 +40,7 @@
 	<script type="text/javascript">
 		// Add commas to numbers. Example: 1000 becomes 1,000.
 		function numberWithCommas(x) {
-		    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+			return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 		}
 
 		function apCityNameStyling(cityStateString){
@@ -98,7 +99,7 @@
 			top: 50,
 			right: 20,
 			bottom: 100,
-			left: 85
+			left: 120
 		};
 		var marginTop = margin.top;
 		var marginLeft = margin.left;
@@ -257,7 +258,7 @@
 						return color(d.name);
 					})
 
-			var popThreshold = 2000000; // Proxy for bar width
+			var popThreshold = 1500000; // Proxy for bar width
 			city.selectAll('.city')
 				.data(function(d){
 					return d.years;
@@ -289,19 +290,34 @@
 					return numberWithCommas(d.value);
 				});
 
-var insertLinebreaks = function (d) {
-    var el = d3.select(this);
-    var words = d.split(' ');
-    el.text('');
+				var insertLinebreaks = function (d,i) {
+					// Get `y` value for `g` element containing each cluster of bars
+ 					var gCityY = d3.selectAll('.city')[0][i]
+						.getAttribute('transform')
+						.split(',')[1]
+						.replace(')','');
+					var yTick = d3.selectAll('.y .tick')[0][i];
+					var el = d3.select(this);
+					console.log(d);
+					var words = d.indexOf(', ') > -1 ? d.split(', ').map(function(w,i){return i===0 ? w+',' : w}) : d.split(' ');
+					el.text('');
+					for (var i = 0; i < words.length; i++) {
+						var tspan = el.append('tspan').text(words[i]);
+						if(i===0){
+							tspan.attr('dx',5);
+						} else if (i > 0){
+							tspan.attr('x', 0).attr('dy', '15');
+						}
+					}
 
-    for (var i = 0; i < words.length; i++) {
-        var tspan = el.append('tspan').text(words[i]);
-        if (i > 0)
-            tspan.attr('x', 0).attr('dy', '15');
-    }
-};
+					if(words.length>1){
+						var cityNameY = words.length===3 ? +gCityY+10 : +gCityY+20;
+						yTick.setAttribute('transform','translate(-2.5,'+cityNameY+')');
+					}
+					
+				};
 
-chart.selectAll('.y .tick text').each(insertLinebreaks);
+				chart.selectAll('.y .tick text').each(insertLinebreaks);
 
 
 		});
