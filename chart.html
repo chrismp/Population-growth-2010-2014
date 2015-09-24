@@ -37,9 +37,55 @@
 	<!-- <h1>Here's how fast America's hugest cities grew or shrank from 2010 to 2014</h1> -->
 	<svg class="chart"></svg>
 	<script type="text/javascript">
+		// Add commas to numbers. Example: 1000 becomes 1,000.
 		function numberWithCommas(x) {
 		    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 		}
+
+		function apCityNameStyling(cityStateString){
+			// This isn't exact AP styling, but pretty close
+			var apCities = {
+				'Atlanta, Georgia': 'Atlanta',
+				'Baltimore, Maryland': 'Baltimore',
+				'Boston, Massachusetts': 'Boston',
+				'Chicago, Illinois': 'Chicago',
+				'Cincinnati, Ohio': 'Cincinnati',
+				'Cleveland, Ohio': 'Cleveland',
+				'Dallas, Texas': 'Dallas',
+				'Denver, Colorado': 'Denver',
+				'Detroit, Michigan': 'Detroit',
+				'Honolulu, Hawaii': 'Honolulu',
+				'Houston, Texas': 'Houston',
+				'Indianapolis  (balance), Indiana': 'Indianapolis',
+				'Las Vegas, Nevada': 'Las Vegas',
+				'Los Angeles, California': 'Los Angeles',
+				'Miami, Florida': 'Miami',
+				'Milwaukee, Wisconsin': 'Milwaukee',
+				'Minneapolis, Minnesota': 'Minneapolis',
+				'Nashville-Davidson (balance), Tennessee': 'Nashville, Tennessee', // Not a standalone city, but the key here is how the Census calls Nashville, TN
+				'New Orleans, Louisiana': 'New Orleans',
+				'New York, New York': 'New York City',
+				'Oklahoma City, Oklahoma': 'Oklahoma City',
+				'Philadelphia, Pennsylvania': 'Philadelphia',
+				'Phoenix, Arizona': 'Phoenix',
+				'Pittsburgh, Pennsylvania': 'Pittsburgh',
+				'Salt Lake City, Utah': 'Salt Lake City',
+				'San Antonio, Texas': 'San Antonio',
+				'San Diego, California': 'San Diego',
+				'San Francisco, California': 'San Francisco',
+				'Seattle, Washington': 'Seattle',
+				'St. Louis, Missouri': 'St. Louis',
+				'Washington, District of Columbia': 'Washington, D.C.'
+			};
+
+			if(cityStateString in apCities){
+				return apCities[cityStateString];
+			} else {
+				return cityStateString;
+			}
+		}
+
+
 
 		var colorArray = [
 			'#9ecae1',
@@ -50,9 +96,9 @@
 
 		var margin = {
 			top: 50,
-			right: 10,
+			right: 20,
 			bottom: 100,
-			left: 150
+			left: 85
 		};
 		var marginTop = margin.top;
 		var marginLeft = margin.left;
@@ -69,16 +115,6 @@
 				return +d.population2014>=500000;
 			});
 
-			// var data = data.map(function(obj){
-			// 	var pop2010 = +obj.population2010;
-			// 	var pop2014 = +obj.population2014;
-			// 	var popChange = pop2014-pop2010;
-			// 	var popChangePercent = popChange/pop2010;
-
-			// 	obj.popChange = popChange;
-			// 	obj.popChangePercent = popChangePercent;
-			// 	return obj;
-			// });
 			var maxPopulation2014 = d3.max(
 					data,
 					function(d){
@@ -90,21 +126,22 @@
 			var yearColumnNames = d3.keys(data[0]).filter(function(key){ 
 				return (key!=="Id" && key!=="City");
 			});
+
+			data.sort(
+				function(a,b){
+					return +b.population2014 - +a.population2014; // Sort by 2014 population, highest to lowest
+				}
+			);
+
 			data.forEach(function(d){
+				d.apCityName = apCityNameStyling(d.City);
 				d.years = yearColumnNames.map(function(name){
 					return {
 						name: name,
 						value: +d[name]
 					};
-				})
+				});
 			});
-
-			data.sort(
-				function(a,b){
-					return +b.population2014 - +a.population2014; // Sort by 2014 population, highest to lowest
-					// return +b.popChangePercent - +a.popChangePercent;
-				}
-			);
 			
 			chart.attr('height',height)
 				.attr('transform','translate('+marginLeft+','+marginTop+')');
@@ -141,7 +178,7 @@
 					.attr('y',-25);
 
 			var cityNameArray = data.map(function(d){
-				return d.City;
+				return d.apCityName;
 			});
 			var y0 = d3.scale.ordinal()
 				.domain(cityNameArray)
@@ -152,12 +189,45 @@
 
 			var yAxis = d3.svg.axis()
 				.scale(y0)
-
 				.orient('left');
 
 			chart.append('g')
 				.attr('class','y axis')
 				.call(yAxis);
+				// .selectAll('.tick text')
+				// 	.call(wrap, y0.rangeBand());
+
+// function wrap(text, width) {
+// 	text.each(function() {
+// 		var text = d3.select(this),
+// 		words = text.text().split(/\s+/).reverse(),
+// 		word,
+// 		line = [],
+// 		lineNumber = 0,
+// 		lineHeight = 1.1, // ems
+// 		y = text.attr("y"),
+// 		dy = parseFloat(text.attr("dy")),
+// 		tspan = text.text(null)
+// 			.append("tspan")
+// 			.attr("x", 0)
+// 			.attr("y", y)
+// 			.attr("dy", dy + "em");
+// 		while (word = words.pop()) {
+// 			line.push(word);
+// 			tspan.text(line.join(" "));
+// 			if (tspan.node().getComputedTextLength() > width) {
+// 				line.pop();
+// 				tspan.text(line.join(" "));
+// 				line = [word];
+// 				tspan = text.append("tspan")
+// 					.attr("x", 0)
+// 					.attr("y", y)
+// 					.attr("dy", ++lineNumber * lineHeight + dy + "em")
+// 					.text(word);
+// 			}
+// 		}
+// 	});
+// }
 
 			var city = chart.selectAll('.city')
 				.data(data)
@@ -165,7 +235,7 @@
 				.append('g')
 				.attr('class','city')
 				.attr('transform',function(d){
-					return 'translate('+0+','+y0(d.City)+')';
+					return 'translate('+0+','+y0(d.apCityName)+')';
 				});
 
 			city.selectAll('rect')
@@ -217,7 +287,23 @@
 				.attr('paint-order','stroke')
 				.text(function(d){
 					return numberWithCommas(d.value);
-				})
+				});
+
+var insertLinebreaks = function (d) {
+    var el = d3.select(this);
+    var words = d.split(' ');
+    el.text('');
+
+    for (var i = 0; i < words.length; i++) {
+        var tspan = el.append('tspan').text(words[i]);
+        if (i > 0)
+            tspan.attr('x', 0).attr('dy', '15');
+    }
+};
+
+chart.selectAll('.y .tick text').each(insertLinebreaks);
+
+
 		});
 	</script>
 </body>
